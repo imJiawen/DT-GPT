@@ -11,8 +11,10 @@ import subprocess
 # NOTE: this script then generates the data in the pipeline's directory, you need to copy over the results into your own directory (see README.md).
 
 
-PATH_TO_MIMIC_IV_DATA_PIPELINE = "/home/makaron1/scratch/mimic-iv/"
-
+# PATH_TO_MIMIC_IV_DATA_PIPELINE = "/home/makaron1/scratch/mimic-iv/"
+PATH_TO_MIMIC_IV_DATA_PIPELINE = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/ClinicalFM/"
+root_dir = "/n/netscratch/mzitnik_lab/Lab/jiawezhang/mimic_iv/physionet.org/files/"
+version_path="/n/netscratch/mzitnik_lab/Lab/jiawezhang/mimic_iv/physionet.org/files/mimiciv/2.0"
 
 os.chdir(PATH_TO_MIMIC_IV_DATA_PIPELINE + 'MIMIC-IV-Data-Pipeline')
 
@@ -37,7 +39,7 @@ module_path='model'
 if module_path not in sys.path:
     sys.path.append(module_path)
 #print(sys.path)
-root_dir = PATH_TO_MIMIC_IV_DATA_PIPELINE + "/MIMIC-IV-Data-Pipeline"
+
 import day_intervals_cohort
 from day_intervals_cohort import *
 
@@ -144,8 +146,8 @@ def main():
     data_admn=label=='Readmission'
     data_los=label=='Length of Stay'
     icd_code='No Disease Filter'
-    version_path="mimiciv/2.0"
-    cohort_output = day_intervals_cohort_v2.extract_data(radio_input1,label,time,icd_code, root_dir,disease_label)
+    # version_path="mimiciv/2.0"
+    cohort_output = day_intervals_cohort_v2.extract_data(radio_input1,label,time,icd_code, root_dir, disease_label)
 
 
     print("Which Features you want to include for cohort?")
@@ -160,6 +162,7 @@ def main():
     proc_flag=check_input4
     med_flag=check_input5
 
+    
     feature_icu(cohort_output, version_path,diag_flag,out_flag,chart_flag,proc_flag,med_flag)
 
 

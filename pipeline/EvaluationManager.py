@@ -292,7 +292,7 @@ class EvaluationManager:
 
         for idx, patientid in enumerate(list_of_patient_ids):
 
-            if idx % 100 == 0:
+            if idx % 500 == 0:
                 logging.info("Loading patient: " + str(idx) + " / " + str(len(list_of_patient_ids)))
 
             curr_const, curr_events = self.get_full_patient_info(patientid)

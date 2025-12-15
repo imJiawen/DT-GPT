@@ -206,9 +206,13 @@ def main():
     MAX_NR_EPOCHS = 100
 
 
-    eval_manager = EvaluationManager("2024_03_15_mimic_iv")
+    # eval_manager = EvaluationManager("2024_03_15_mimic_iv")
+    # experiment = Experiment("setup_mimic_neuralforecast")
+    
+    
+    eval_manager = EvaluationManager("2024_03_15_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/")
+    experiment = Experiment("setup_mimic_neuralforecast", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", experiment_folder_root="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/log/mimic_forecast")
 
-    experiment = Experiment("setup_mimic_neuralforecast")
 
     # Uncomment for debug mode of WandB
     if WANDB_DEBUG_MODE:
@@ -254,7 +258,7 @@ def main():
 
     test_full_events, test_full_meta = splitter.setup_split_indices(test_full_events, eval_manager)
     
-    path_to_statistics_file = experiment.base_path + "2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json"
+    path_to_statistics_file = experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json"
     with open(path_to_statistics_file) as f:
         statistics_dic = json.load(f)
     
@@ -356,7 +360,7 @@ def main():
         ############################################################ Evaluate model ############################################################
 
 
-        path_to_statistics_file = experiment.base_path + "2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json"
+        path_to_statistics_file = experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json"
         with open(path_to_statistics_file) as f:
             statistics_dic = json.load(f)
 
@@ -461,7 +465,7 @@ def main():
         params = {
             "prompt_prefix": prompt,
             "max_training_steps": round(num_epochs * 107.003257329),  # Providing since we can't just give nr of epochs in NeuralForecast
-            "model": LLAMA2_7B,  # GPT_2 or LLAMA2_7B
+            "model": GPT_2,  # GPT_2 or LLAMA2_7B
             "top_k": 5,  # From paper
             "batch_size" : batch_size,  # Number of instances to get
             "windows_batch_size": window_batch_size,  # Number of batches per sequence to get at once
@@ -471,7 +475,7 @@ def main():
     # Run
     #run_time_llm(1.0)
     run_time_llm(50)
-
+    # run_patchtst(50)
 
 
 # Call main runner

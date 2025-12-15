@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     train_val_test_split = [0.8, 0.1, 0.1]
 
-    constants_path = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv"
+    constants_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv"
 
     # Load constants
     constants = pd.read_csv(constants_path)

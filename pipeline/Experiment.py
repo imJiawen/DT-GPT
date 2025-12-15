@@ -23,7 +23,7 @@ class Experiment:
 
     def __init__(self, experiment_name, experiment_class_name=None,  nickname=None, 
                     experiment_folder_root = "/pstore/data/dt-gpt/raw_experiments/uc2_nsclc/",
-                    timestamp_to_use=None):
+                    timestamp_to_use=None, base_path=None):
         
         if experiment_class_name is None:
             experiment_class_name = experiment_name
@@ -51,7 +51,10 @@ class Experiment:
         self._setup_logging()
 
         # Some constants
-        self.base_path = os.path.dirname(__file__).split("/DT-GPT")[0] + "/DT-GPT/"  # Hacky way to get the base path
+        if base_path is None:
+            self.base_path = os.path.dirname(__file__).split("/DT-GPT")[0] + "/DT-GPT/"  # Hacky way to get the base path
+        else:
+            self.base_path = base_path
         self.model_cache_path = self.base_path + "3_cache/"
 
 
@@ -295,7 +298,12 @@ class Experiment:
 
             # Convert both to numeric to target cols
             predicted_df[target_cols_raw] = predicted_df[target_cols_raw].apply(pd.to_numeric, errors='raise')
-            target_dataframe_no_empty_rows[target_cols_raw] = target_dataframe_no_empty_rows[target_cols_raw].apply(pd.to_numeric, errors='raise')
+            # target_dataframe_no_empty_rows[target_cols_raw] = target_dataframe_no_empty_rows[target_cols_raw].apply(pd.to_numeric, errors='raise')
+            target_dataframe_no_empty_rows = target_dataframe_no_empty_rows.copy()
+            target_dataframe_no_empty_rows.loc[:, target_cols_raw] = (
+                target_dataframe_no_empty_rows[target_cols_raw]
+                .apply(pd.to_numeric, errors="raise")
+            )
             
             # send to eval manager
             eval_manager.evaluate_split_stream_prediction(predicted_df, target_dataframe_no_empty_rows, patientid, patient_sample_index)

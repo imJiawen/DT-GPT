@@ -4,7 +4,7 @@ import os
 import json
 from collections import Counter
 import time
-import wandb
+# import wandb
 
 
 
@@ -15,15 +15,15 @@ def main():
     print("Starting main filtering and processing")
 
     #: go through every csv in the folder, open as csv, then note down stats for non-zero/non-na values
-    load_folder_path = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/1_raw_events/csv"
-    save_folder_path = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/events"
-    save_folder_path_constant = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data"
+    load_folder_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/2_data_setup/1_raw_events/csv"
+    save_folder_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/events"
+    save_folder_path_constant = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/0_final_data"
 
     # get all files in the folder
     files = os.listdir(load_folder_path)
 
     #: open stats dic, and select which variables to keep
-    with open('/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/2024_02_01_raw_data_stats.json') as f:
+    with open('/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/2024_02_01_raw_data_stats.json') as f:
         stats = json.load(f)
     
     # convert everything to numpy arrays if possible
@@ -157,10 +157,10 @@ if __name__ == "__main__":
     debug = False
 
     #: setup wandb
-    if debug:
-        wandb.init(mode="disabled")
-    else:
-        wandb.init(project='UC - MIMIC-IV', group="Data Processing")
+    # if debug:
+    #     wandb.init(mode="disabled")
+    # else:
+    #     wandb.init(project='UC - MIMIC-IV', group="Data Processing")
 
     main()
 

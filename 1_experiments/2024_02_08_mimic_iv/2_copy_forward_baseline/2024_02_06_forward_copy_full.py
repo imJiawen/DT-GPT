@@ -5,26 +5,27 @@ import wandb
 import pandas as pd
 import numpy as np
 from pipeline.Splitters import After24HSplitter
-from BaselineHelpers import forward_fill_median_backup
+from pipeline.BaselineHelpers import forward_fill_median_backup
 import json
 from pipeline.NormalizationFilterManager import Only_Standardization
 from pipeline.MetricManager import MetricManager
 from plotnine import *
 import matplotlib.pyplot
 matplotlib.pyplot.set_loglevel("error")
-from PlottingHelpers import PlotHelper
-
+from pipeline.PlottingHelpers import PlotHelper
+import sys
 
 def main():
 
     MIN_NR_DAYS_FORECAST = 91   # We want to forecast up to the first visit after this value, or until the start of the next therapy (which ever comes first) - using 91 since it is the closest multiple of 7 to 90 days - often used for meds
     NR_DAYS_FORECAST = MIN_NR_DAYS_FORECAST
 
-    eval_manager = EvaluationManager("2024_03_15_mimic_iv")
-    experiment = Experiment("copy_forward_mimic_iv")
+    eval_manager = EvaluationManager("2024_03_15_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/")
+    experiment = Experiment("copy_forward_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", experiment_folder_root="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/log/mimic_forecast")
 
     # Uncomment for debug
     # experiment.setup_wandb_debug_mode()
+
 
     experiment.setup_wandb("Copy Forward - Full Validation & Training", "Copy Forward - Full", project="UC - MIMIC-IV")
 
@@ -53,7 +54,7 @@ def main():
 
 
 
-    path_to_statistics_file = experiment.base_path + "2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json"
+    path_to_statistics_file = experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json"
     with open(path_to_statistics_file) as f:
         statistics_dic = json.load(f)
 
@@ -100,7 +101,7 @@ def main():
         return eval_targets_filtered, eval_prediction_filtered, eval_targets_filtered_with_meta_data
 
     
-    validation_targets, validation_prediction, validation_meta_data = evaluate_and_record(validation_full_events, validation_set, validation_full_meta)
+    # validation_targets, validation_prediction, validation_meta_data = evaluate_and_record(validation_full_events, validation_set, validation_full_meta)
     test_targets, test_prediction, test_meta_data = evaluate_and_record(test_full_events, test_set, test_full_meta)
     
 
@@ -108,8 +109,8 @@ def main():
 
     denormalized_test_targets, denormalized_test_prediction, denormalized_meta = only_standardize.denormalize(test_targets, test_prediction, test_meta_data)
 
-    plotter = PlotHelper(dataset_statistics_json_path=experiment.base_path + "2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json", 
-                    column_descriptive_mapping_path=experiment.base_path + "2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+    plotter = PlotHelper(dataset_statistics_json_path=experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json", 
+                    column_descriptive_mapping_path=experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
     
     #: go over all variables
     target_cols = eval_manager.get_column_usage()[2]

@@ -15,17 +15,21 @@ mkdir ./2_data_setup/1_raw_events
 
 # Copy over the raw files
 cp <PATH TO YOUR PIPELINE>/data/output/* ./2_data_setup/1_raw_events
+cp -rf /n/netscratch/mzitnik_lab/Lab/jiawezhang/mimic_iv/physionet.org/files/data/* ./2_data_setup/1_raw_events
 
 # Make final data folders
 mkdir ./0_final_data
 mkdir ./0_final_data/events
 
 # Run further preprocessing
-./1_preprocessing/2024_03_15_runner.py
+python 1_preprocessing/2024_03_15_runner.py
 
 # Run post-processing
-./2_data_setup/2024_03_14_set_constant_splits.py
-./2_data_setup/2024_03_15_post_process_for_meta_data.py
+python 2_data_setup/2024_03_14_set_constant_splits.py
+
+export PYTHONPATH=/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/Multimodal-Medical-Tokenizer/baselines/DT-GPT:$PYTHONPATH
+
+python 2_data_setup/2024_03_15_post_process_for_meta_data.py
 ```
 
 

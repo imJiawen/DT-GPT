@@ -10,7 +10,7 @@ import wandb
 
 
 
-
+root_dir = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments"
 
 
 
@@ -24,7 +24,7 @@ def generate_column_mapping():
 
 
     # get an example events file for the columns
-    example_events_df = pd.read_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/events/1_events.csv")
+    example_events_df = pd.read_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/events/1_events.csv")
 
 
     # drop first columns as they are junk
@@ -63,15 +63,15 @@ def generate_column_mapping():
 
 
     # save as json
-    with open('/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_mapping.json', 'w') as f:
+    with open(root_dir + '/2024_02_08_mimic_iv/1_data/0_final_data/column_mapping.json', 'w') as f:
         json.dump(mapping, f, indent=4)
 
 
     #: add column path_to_events_file in constants
-    constants = pd.read_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv")
+    constants = pd.read_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv")
     constants["patientid"] = constants["patientid"].astype(str)
     constants["path_to_events_file"] = constants["patientid"] + "_events.csv"
-    constants.to_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv")
+    constants.to_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv")
 
     print("Finished with generate_column_mapping")
 
@@ -92,7 +92,7 @@ def dataset_statistics_loader():
 
 
     #: load up eval manager
-    eval_manager = EvaluationManager("2024_03_15_mimic_iv", load_statistics_file=False)  # Do not load the statistics file, since we're building it now
+    eval_manager = EvaluationManager("2024_03_15_mimic_iv", load_statistics_file=False, base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/")  # Do not load the statistics file, since we're building it now
 
 
     manual_categorical_columns = []
@@ -111,8 +111,8 @@ def dataset_statistics_loader():
     for idx, (current_training_path, current_patient_ids) in enumerate(zip(training_paths, training_patientids)):
 
         # log
-        if idx % 100 == 0:
-            print("Currently at patient nr: " + str(idx+1) + " / " + str(training_len) + " time for last 100: " + str(time.time() - prev_time))
+        if idx % 1000 == 0:
+            print("Currently at patient nr: " + str(idx+1) + " / " + str(training_len) + " time for last 1000: " + str(time.time() - prev_time))
             prev_time = time.time()
 
         # load each dataframe
@@ -230,7 +230,7 @@ def dataset_statistics_loader():
             return super(NpEncoder, self).default(obj)
         
 
-    with open("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json", "w") as outfile: 
+    with open(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json", "w") as outfile: 
         json.dump(summarized_vals, outfile, cls=NpEncoder, indent=4)   
 
 
@@ -258,7 +258,7 @@ def make_random_patient_subsets():
 
 
 
-        constants = pd.read_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv")
+        constants = pd.read_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/constants.csv")
 
 
         constants_split = constants[constants["dataset_split"] == split_to_select]
@@ -277,7 +277,7 @@ def make_random_patient_subsets():
 
 
         # Save as json
-        with open('/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/patient_subsets/' + file_name +'.json', 'w') as f:
+        with open(root_dir + '/2024_02_08_mimic_iv/1_data/0_final_data/patient_subsets/' + file_name +'.json', 'w') as f:
             json.dump(save_dic, f, indent=4)
 
 
@@ -304,7 +304,7 @@ def mapping_file_generation():
     #: make columns group, original_column_names, descriptive_column_name
 
     #: load raw stats
-    with open("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/2024_02_01_raw_data_stats.json") as f:
+    with open(root_dir + "/2024_02_08_mimic_iv/1_data/1_preprocessing/2024_02_01_raw_data_stats.json") as f:
         dataset_statistics = json.load(f)
 
     #: generate from that
@@ -320,7 +320,7 @@ def mapping_file_generation():
 
     # make into df
     df = pd.DataFrame(rows)
-    df.to_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+    df.to_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
 
 
 
@@ -339,7 +339,7 @@ def mapping_file_generator_nr_tokens_estimated():
 
 
 
-    original_column_mapping = pd.read_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+    original_column_mapping = pd.read_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
 
     tokenizer = LlamaTokenizer.from_pretrained("NousResearch/Llama-2-7b-hf", truncation_side="left")
 
@@ -363,7 +363,7 @@ def mapping_file_generator_nr_tokens_estimated():
     new_column_mapping = new_column_mapping.drop(['Unnamed: 0', 'X.2', 'X.1', 'X'], axis=1, errors="ignore")
 
     # save
-    new_column_mapping.to_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+    new_column_mapping.to_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
 
 
 
@@ -386,7 +386,7 @@ def duplicate_naming_increment():
     import pandas as pd
     import numpy as np
 
-    original_column_mapping = pd.read_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+    original_column_mapping = pd.read_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
 
     # Create a new column that enumerates the duplicates
     counts = original_column_mapping.groupby('descriptive_column_name').cumcount() + 1
@@ -406,7 +406,7 @@ def duplicate_naming_increment():
     new_column_mapping = original_column_mapping.drop(['Unnamed: 0', 'X.2', 'X.1', 'X'], axis=1, errors="ignore")
 
     # save
-    new_column_mapping.to_csv("/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+    new_column_mapping.to_csv(root_dir + "/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
 
     print("Finished MAKING DUPLICATED DESCRIPTIVE NAMING WITH NUMBERS")
 

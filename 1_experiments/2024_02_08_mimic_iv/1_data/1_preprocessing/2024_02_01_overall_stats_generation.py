@@ -3,7 +3,7 @@ import numpy as np
 import os
 import json
 import time
-import wandb
+# import wandb
 
 
 class NpEncoder(json.JSONEncoder):
@@ -22,7 +22,8 @@ def main():
 
     #: go through every csv in the folder, open as csv, then note down stats for non-zero/non-na values
 
-    folder_path = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/1_raw_events/csv"
+    # folder_path = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/1_raw_events/csv"
+    folder_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/2_data_setup/1_raw_events/csv"
 
     # get all files in the folder
     files = os.listdir(folder_path)
@@ -31,12 +32,14 @@ def main():
     stats = {}
 
     # Load in helper csv
-    help_csv_path = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/0_raw_helper_files/d_items.csv"
+    # help_csv_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/0_raw_helper_files/d_items.csv"
+    help_csv_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/data/clinical/physionet.org/files/mimiciv/2.0/icu/d_items.csv.gz"
     help_df = pd.read_csv(help_csv_path)
     help_df["itemid"] = help_df["itemid"].astype(str)
 
     # load in diagnosis csv
-    diagnosis_csv_path = "/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/0_raw_helper_files/d_icd_diagnoses.csv"
+    # diagnosis_csv_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/0_raw_helper_files/d_icd_diagnoses.csv"
+    diagnosis_csv_path = "/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/data/clinical/physionet.org/files/mimiciv/2.0/hosp/d_icd_diagnoses.csv.gz"
     diagnosis_df = pd.read_csv(diagnosis_csv_path)
 
 
@@ -142,7 +145,7 @@ def main():
 
     
     # Save dictionary
-    with open('/home/makaron1/uc2_nsclc/2_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/2024_02_01_raw_data_stats.json', 'w') as f:
+    with open('/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/1_experiments/2024_02_08_mimic_iv/1_data/1_preprocessing/2024_02_01_raw_data_stats.json', 'w') as f:
         json.dump(stats, f, cls=NpEncoder, indent=2)
     
 
@@ -152,10 +155,10 @@ if __name__ == "__main__":
     debug = False
 
     #: setup wandb
-    if debug:
-        wandb.init(mode="disabled")
-    else:
-        wandb.init(project='UC - MIMIC-IV', group="Data Processing")
+    # if debug:
+    #     wandb.init(mode="disabled")
+    # else:
+    #     wandb.init(project='UC - MIMIC-IV', group="Data Processing")
 
     main()
 
