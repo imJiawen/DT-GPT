@@ -11,10 +11,14 @@ import os
 
 class EvaluationManager:
 
-    def __init__(self, dataset_name, load_statistics_file=True, base_path=None):
+    def __init__(self, dataset_name, load_statistics_file=True, base_path=None, debug_mode=False):
         
         # Public variables
         self.dataset_name = dataset_name
+        self.debug_mode = debug_mode
+        
+        self.use_parquet_if_available = True
+        self.parquet_folder_name = "patient_events_parquet"
         
         # Dictionary with all available datasets
         if base_path is not None:
@@ -186,8 +190,10 @@ class EvaluationManager:
         #: then get paths - see previous version
         ret_list_paths = []
         for patientid in ret_list_patientids:
-            curr_patient_path = self._current_master_constants_table.loc[self._current_master_constants_table["patientid"] == patientid]["path_to_events_file"].tolist()[0]
-            ret_list_paths.append(self.path_prefix + self._datasets_available[self.dataset_name]["path_to_events_folder"] + curr_patient_path)
+            # curr_patient_path = self._current_master_constants_table.loc[self._current_master_constants_table["patientid"] == patientid]["path_to_events_file"].tolist()[0]
+            # ret_list_paths.append(self.path_prefix + self._datasets_available[self.dataset_name]["path_to_events_folder"] + curr_patient_path)
+            curr_patient_path = self._patientid_to_path[patientid]
+            ret_list_paths.append(self.path_prefix + self._datasets_available[self.dataset_name]["path_to_events_folder"] + str(curr_patient_path))
 
         return ret_list_paths, ret_list_patientids
     
@@ -257,24 +263,56 @@ class EvaluationManager:
         raise Exception("Eval Manager: split not found!")
     
 
-    def get_events_table(self, patientid):
+    # def get_events_table(self, patientid):
         
-        # Then check if data already in cache
+    #     # Then check if data already in cache
+    #     if patientid in self._patient_events_cache:
+    #         return self._patient_events_cache[patientid]
+
+    #     # load data
+    #     # patient_path = self._current_master_constants_table.loc[self._current_master_constants_table["patientid"] == patientid]["path_to_events_file"].tolist()[0]
+    #     patient_path = self._patientid_to_path[patientid]
+    #     path = self.path_prefix + self._current_dataset_metadata["path_to_events_folder"] + str(patient_path)
+    #     patient_events_table = pd.read_csv(path)
+
+    #     # convert date to date
+    #     patient_events_table['date'] = pd.to_datetime(patient_events_table['date'])
+
+    #     # save to cache
+    #     self._patient_events_cache[patientid] = patient_events_table
+
+    #     return patient_events_table
+    
+    def get_events_table(self, patientid):
+
+        # cache hit
         if patientid in self._patient_events_cache:
             return self._patient_events_cache[patientid]
 
-        # load data
-        patient_path = self._current_master_constants_table.loc[self._current_master_constants_table["patientid"] == patientid]["path_to_events_file"].tolist()[0]
-        path = self.path_prefix + self._current_dataset_metadata["path_to_events_folder"] + str(patient_path)
-        patient_events_table = pd.read_csv(path)
+        csv_path = self._get_csv_path(patientid)
+        parquet_path = self._get_parquet_path(patientid)
 
-        # convert date to date
-        patient_events_table['date'] = pd.to_datetime(patient_events_table['date'])
+        df = None
 
-        # save to cache
-        self._patient_events_cache[patientid] = patient_events_table
+        if self.use_parquet_if_available and os.path.exists(parquet_path):
+            df = pd.read_parquet(parquet_path)
+        else:
+            df = pd.read_csv(csv_path)
 
-        return patient_events_table
+            # datetime
+            if "date" in df.columns and not is_datetime(df["date"]):
+                df["date"] = pd.to_datetime(df["date"])
+
+            # write parquet
+            if self.use_parquet_if_available:
+                os.makedirs(os.path.dirname(parquet_path), exist_ok=True)
+                try:
+                    df.to_parquet(parquet_path, index=False)
+                except Exception as e:
+                    logging.warning(f"Failed to write parquet for patient {patientid}: {e}")
+
+        self._patient_events_cache[patientid] = df
+        return df
 
 
     def get_full_patient_info(self, patientid):
@@ -294,6 +332,8 @@ class EvaluationManager:
 
             if idx % 500 == 0:
                 logging.info("Loading patient: " + str(idx) + " / " + str(len(list_of_patient_ids)))
+                if idx > 1000 and self.debug_mode:
+                    break
 
             curr_const, curr_events = self.get_full_patient_info(patientid)
 
@@ -399,10 +439,21 @@ class EvaluationManager:
     ########################################### PRIVATE HELPER FUNCTIONS ################################################################
 
     
-    def _load_constants_table(self):
+    # def _load_constants_table(self):
 
-        # Load in main table
-        self._current_master_constants_table = pd.read_csv(self.path_prefix + self._current_dataset_metadata["path_constant"])
+    #     # Load in main table
+    #     self._current_master_constants_table = pd.read_csv(self.path_prefix + self._current_dataset_metadata["path_constant"])
+    
+    def _load_constants_table(self):
+        self._current_master_constants_table = pd.read_csv(
+            self.path_prefix + self._current_dataset_metadata["path_constant"]
+        )
+
+        # 建索引，后续 loc 直接按 patientid 取
+        self._current_master_constants_table = self._current_master_constants_table.set_index("patientid", drop=False)
+
+        # 预先把 patientid -> path 的字典建好，速度最快
+        self._patientid_to_path = self._current_master_constants_table["path_to_events_file"].to_dict()
 
 
     def _load_rest(self, load_statistics_file=True):
@@ -442,3 +493,22 @@ class EvaluationManager:
 
 
 
+    def _get_csv_path(self, patientid) -> str:
+        patient_path = self._patientid_to_path[patientid]
+        return self.path_prefix + self._current_dataset_metadata["path_to_events_folder"] + str(patient_path)
+
+    def _get_parquet_path(self, patientid) -> str:
+        csv_path = self._get_csv_path(patientid)
+
+        # 目录: patient_events -> patient_events_parquet
+        # 兼容不同数据集 events 目录命名, 如果不包含 patient_events, 就在同级新建 parquet 目录
+        folder = self._current_dataset_metadata["path_to_events_folder"].rstrip("/")
+        if folder.endswith("/patient_events"):
+            parquet_folder = folder[:-len("/patient_events")] + f"/{self.parquet_folder_name}"
+            parquet_path = csv_path.replace(folder + "/", parquet_folder + "/").replace(".csv", ".parquet")
+        else:
+            # 例如 mimic 里是 .../events/ 这种命名
+            parquet_folder = folder + f"_{self.parquet_folder_name}"
+            parquet_path = csv_path.replace(folder + "/", parquet_folder + "/").replace(".csv", ".parquet")
+
+        return parquet_path

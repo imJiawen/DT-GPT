@@ -21,7 +21,7 @@ def main():
     NR_DAYS_FORECAST = MIN_NR_DAYS_FORECAST
 
     eval_manager = EvaluationManager("2024_03_15_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/")
-    experiment = Experiment("copy_forward_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", experiment_folder_root="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/log/mimic_forecast")
+    experiment = Experiment("copy_forward_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", experiment_folder_root="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/log/mimic_forecast/")
 
     # Uncomment for debug
     # experiment.setup_wandb_debug_mode()
@@ -107,24 +107,24 @@ def main():
 
     ########################################################### PLOT #################################################################
 
-    denormalized_test_targets, denormalized_test_prediction, denormalized_meta = only_standardize.denormalize(test_targets, test_prediction, test_meta_data)
+    # denormalized_test_targets, denormalized_test_prediction, denormalized_meta = only_standardize.denormalize(test_targets, test_prediction, test_meta_data)
 
-    plotter = PlotHelper(dataset_statistics_json_path=experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json", 
-                    column_descriptive_mapping_path=experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+    # plotter = PlotHelper(dataset_statistics_json_path=experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json", 
+    #                 column_descriptive_mapping_path=experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
     
-    #: go over all variables
-    target_cols = eval_manager.get_column_usage()[2]
+    # #: go over all variables
+    # target_cols = eval_manager.get_column_usage()[2]
 
-    for target_col in target_cols:
+    # for target_col in target_cols:
 
-        y_range_lower_bound = statistics_dic[target_col]["min"]
-        y_range_upper_bound = statistics_dic[target_col]["max"]
+    #     y_range_lower_bound = statistics_dic[target_col]["min"]
+    #     y_range_upper_bound = statistics_dic[target_col]["max"]
 
-        r = plotter.plot_mimic_trajectories(predicted_df=denormalized_test_prediction, target_df=denormalized_test_targets, meta_data=denormalized_meta, column_to_visualize=target_col, 
-                                            ylims=(y_range_lower_bound, y_range_upper_bound),
-                                            num_patients_to_show = 10, trajectory_alpha = 1.0, trajectory_size= 1.0)
+    #     r = plotter.plot_mimic_trajectories(predicted_df=denormalized_test_prediction, target_df=denormalized_test_targets, meta_data=denormalized_meta, column_to_visualize=target_col, 
+    #                                         ylims=(y_range_lower_bound, y_range_upper_bound),
+    #                                         num_patients_to_show = 10, trajectory_alpha = 1.0, trajectory_size= 1.0, base_path=experiment.base_path)
         
-        experiment.save_plotnine_image_to_wandb(r, "mimic_plot_" + str(target_col), dpi=200)
+    #     experiment.save_plotnine_image_to_wandb(r, "mimic_plot_" + str(target_col), dpi=200)
 
 
     ############################################################ Finish run ############################################################

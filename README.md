@@ -12,8 +12,8 @@ Code to run the experiments for the paper ["Large Language Models forecast Patie
 ```python
 # First install a fresh environment
 cd DT-GPT
-pip install -r requirements.txt
-pip install -e .
+/n/home07/jiawezhang/.conda/envs/dtgpt/bin/python -m pip install -r requirements.txt
+/n/home07/jiawezhang/.conda/envs/dtgpt/bin/python -m pip install -e .
 ```
 
 

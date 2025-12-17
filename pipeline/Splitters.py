@@ -142,7 +142,7 @@ class LoTSplitNDays:
         #: go through all
         for idx, patient_events_table in enumerate(list_of_dfs):
 
-            if idx % 100 == 0:
+            if idx % 500 == 0:
                 logging.info("LoT set building - at patient nr: " + str(idx+1) + " / " + str(len(list_of_dfs)))
 
             #: load events file
@@ -350,7 +350,7 @@ class After24HSplitter:
         #: go through all
         for idx, patient_events_table in enumerate(list_of_dfs):
 
-            if idx % 100 == 0:
+            if idx % 500 == 0:
                 logging.info("LoT set building - at patient nr: " + str(idx+1) + " / " + str(len(list_of_dfs)))
 
             #: load events file
@@ -477,7 +477,7 @@ class After1VisitSplitter:
         #: go through all
         for idx, patient_events_table in enumerate(list_of_dfs):
 
-            if idx % 100 == 0:
+            if idx % 500 == 0:
                 logging.info("LoT set building - at patient nr: " + str(idx+1) + " / " + str(len(list_of_dfs)))
 
             #: load events file

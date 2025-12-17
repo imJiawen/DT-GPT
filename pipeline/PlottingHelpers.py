@@ -372,15 +372,18 @@ class PlotHelper:
                                     selection_strategy = "worst",
                                     inches_vertical_per_plot = 4,
                                     inches_horizontal_per_plot = 10,
-                                    eval_manager=None):
+                                    eval_manager=None,
+                                    base_path=None):
 
         # This is an incredibly hacky plotting function, to show individual trajectories for a number of patients
         # selection_strategy can be "random","worst", "best"
 
 
         # Code
-        base_path = os.path.dirname(__file__).split("/uc2_nsclc")[0] + "/uc2_nsclc/"  # Hacky way to get the base path
-        column_descriptive_mapping_path = base_path + "2_experiments/2023_11_07_neutrophils/1_data/column_descriptive_name_mapping.csv"
+        if base_path is None:
+            base_path = os.path.dirname(__file__).split("/uc2_nsclc")[0] + "/uc2_nsclc/"  # Hacky way to get the base path
+            
+        column_descriptive_mapping_path = base_path + "1_experiments/2023_11_07_neutrophils/1_data/column_descriptive_name_mapping.csv"
         descriptive_mapping_df = pd.read_csv(column_descriptive_mapping_path)
         descriptive_mapping = {row[1]["original_column_names"] : row[1]["descriptive_column_name"] for row in descriptive_mapping_df.iterrows()}
 
@@ -487,7 +490,7 @@ class PlotHelper:
 
         # LoT stuff
         base_path = os.path.dirname(__file__).split("/uc2_nsclc")[0] + "/uc2_nsclc/"  # Hacky way to get the base path        
-        lot = pd.read_csv(base_path + "2_experiments/2023_11_07_neutrophils/1_data/line_of_therapy.csv")
+        lot = pd.read_csv(base_path + "1_experiments/2023_11_07_neutrophils/1_data/line_of_therapy.csv")
 
 
 
@@ -771,7 +774,7 @@ class PlotHelper:
 
 
     def plot_mimic_trajectories(self, predicted_df, target_df, meta_data, column_to_visualize, ylims,
-                                num_patients_to_show = 3, trajectory_alpha = 1.0, trajectory_size= 1.0):
+                                num_patients_to_show = 3, trajectory_alpha = 1.0, trajectory_size= 1.0, base_path=None):
         
         #: select random non-na patients to plot
         non_na_targets = target_df.dropna(subset=[column_to_visualize])
@@ -779,8 +782,10 @@ class PlotHelper:
         random_patients = all_patients_samples.sample(num_patients_to_show, random_state=42)
 
         #: get variable descriptive name
-        base_path = os.path.dirname(__file__).split("/uc2_nsclc")[0] + "/uc2_nsclc/"  # Hacky way to get the base path
-        r2_csv_with_names = pd.read_csv(base_path + "2_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
+        if base_path is None:
+            base_path = os.path.dirname(__file__).split("/uc2_nsclc")[0] + "/uc2_nsclc/"  # Hacky way to get the base path
+
+        r2_csv_with_names = pd.read_csv(base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/column_descriptive_name_mapping.csv")
         des_name = r2_csv_with_names[r2_csv_with_names["original_column_names"] == column_to_visualize]["descriptive_column_name"].values[0]
         
         ret_plots = []

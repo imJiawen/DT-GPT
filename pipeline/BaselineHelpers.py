@@ -18,7 +18,8 @@ def forward_fill_median_backup(input_df, empty_target_dataframe, skip_cols, stat
         true_events_input = input_df.sort_values(by=['date'])
 
         #: first try and apply forward filling
-        true_events_input = true_events_input.fillna(method='ffill', axis=0)
+        # true_events_input = true_events_input.fillna(method='ffill', axis=0)
+        true_events_input = true_events_input.ffill(axis=0)
         true_events_input = true_events_input.iloc[-1:, :]
         cols_to_extract = [col for col in empty_target_dataframe.columns if col not in skip_cols]
 
@@ -50,7 +51,7 @@ def forward_fill_median_backup(input_df, empty_target_dataframe, skip_cols, stat
 
         #: evaluate it using eval manager
         targets_nulls = empty_target_dataframe.isnull()
-        predicted_df = empty_target_dataframe.astype(str).mask(targets_nulls, np.NaN) # convert to string
+        predicted_df = empty_target_dataframe.astype(str).mask(targets_nulls, np.nan) # convert to string
         return predicted_df
     
     except Exception:

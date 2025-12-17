@@ -18,15 +18,17 @@ from pytorch_lightning.callbacks import EarlyStopping
 import json
 from pipeline.NormalizationFilterManager import Only_Standardization
 from pipeline.MetricManager import MetricManager
-from PlottingHelpers import PlotHelper
 from darts.models import TiDEModel
 from darts.models import LightGBMModel
 from darts.models import LinearRegressionModel
-import NeuralForecastHelpers
+import pipeline.NeuralForecastHelpers as NeuralForecastHelpers
 
 from neuralforecast import NeuralForecast
 from neuralforecast.models import TimeLLM, PatchTST, MLP
+from pipeline.PlottingHelpers import PlotHelper
 
+import sys
+from src.utils.experiment import set_global_seed
 
 #: setup correctly
 WANDB_DEBUG_MODE = False
@@ -39,7 +41,7 @@ LLAMA2_7B = "meta-llama/Llama-2-7b-hf"
 
 
 
-def setup_model_mlp(params, max_lookback_window, nr_days_forecast, train_dataset, val_dataset):
+def setup_model_mlp(params, max_lookback_window, nr_days_forecast, train_dataset, val_dataset, seed):
     """
     Sets up and trains an MLP model for time series forecasting using NeuralForecast.
 
@@ -85,7 +87,7 @@ def setup_model_mlp(params, max_lookback_window, nr_days_forecast, train_dataset
         hist_exog_list=train_dataset["past_covariate_cols"],
         stat_exog_list=train_dataset["static_covariate_cols"],
         scaler_type='robust',        # Robust scaler as in TimeLLM setup
-        random_seed=7862,  # For reproducibility
+        random_seed=seed,  # For reproducibility
     )
 
     # Initialize NeuralForecast with the MLP model
@@ -110,7 +112,7 @@ def setup_model_mlp(params, max_lookback_window, nr_days_forecast, train_dataset
 
 
 
-def setup_model_time_llm(params, max_lookback_window, nr_days_forecast, train_dataset, val_dataset):
+def setup_model_time_llm(params, max_lookback_window, nr_days_forecast, train_dataset, val_dataset, seed):
 
     logging.info("Setting up time-llm model with following params: " + str(params))
 
@@ -132,7 +134,7 @@ def setup_model_time_llm(params, max_lookback_window, nr_days_forecast, train_da
                 windows_batch_size=params["windows_batch_size"],
                 max_steps=max_training_steps,
                 scaler_type = 'robust',
-                random_seed=7862,
+                random_seed=seed,
                 )
 
     nf = NeuralForecast(
@@ -155,7 +157,7 @@ def setup_model_time_llm(params, max_lookback_window, nr_days_forecast, train_da
 
 
 
-def setup_model_patchtst(params, max_lookback_window, nr_days_forecast, train_dataset, val_dataset):
+def setup_model_patchtst(params, max_lookback_window, nr_days_forecast, train_dataset, val_dataset, seed):
 
     logging.info("Setting up PatchTST model with following params: " + str(params))
 
@@ -164,12 +166,13 @@ def setup_model_patchtst(params, max_lookback_window, nr_days_forecast, train_da
     #: setup model
     patchtst = PatchTST(h=int(nr_days_forecast),
                 input_size=int(max_lookback_window),
+                patch_len=4,
                 batch_size=params["batch_size"],
                 valid_batch_size=params["batch_size"],
                 windows_batch_size=params["windows_batch_size"],
                 max_steps=max_training_steps,
                 scaler_type = 'robust',
-                random_seed=7862,
+                random_seed=seed,
     )
 
     nf = NeuralForecast(
@@ -177,14 +180,41 @@ def setup_model_patchtst(params, max_lookback_window, nr_days_forecast, train_da
         freq=train_dataset["freq"],
     )
 
+    # #: TimeLLM does not support future, historical or static exogenous variables.
+    # train_dataset_df = train_dataset["df"][["unique_id", "ds", "y"]]
+
+    # #: fit model
+    # logging.info("Starting to fit model")
+
+    # nf.fit(df=train_dataset_df,
+    #        val_size = 0)
+
+    # logging.info("Finished fitting model")
+    
     #: TimeLLM does not support future, historical or static exogenous variables.
     train_dataset_df = train_dataset["df"][["unique_id", "ds", "y"]]
+    
+    # --- 修改开始：处理验证集并合并 ---
+    
+    # 1. 同样对 val_dataset 进行列过滤
+    val_dataset_df = val_dataset["df"][["unique_id", "ds", "y"]]
+    
+    # 2. 计算 val_size (验证集的时间步长度)
+    # 假设所有 unique_id 的验证集长度是一样的，我们取其中一个的长度即可
+    # 如果你的数据是规整的，这样计算是准确的
+    val_size = val_dataset_df.groupby("unique_id").size().iloc[0]
+    
+    # 3. 将训练集和验证集按时间顺序拼接
+    # NeuralForecast 要求输入一个包含完整历史的 DF，然后通过 val_size 切分尾部
+    full_df = pd.concat([train_dataset_df, val_dataset_df]).sort_values(["unique_id", "ds"]).reset_index(drop=True)
 
     #: fit model
-    logging.info("Starting to fit model")
+    logging.info(f"Starting to fit model with val_size={val_size}")
 
-    nf.fit(df=train_dataset_df,
-           val_size = 0)
+    # 4. 传入合并后的 full_df，并设置 val_size
+    nf.fit(df=full_df,
+           val_size=val_size)
+
 
     logging.info("Finished fitting model")
     
@@ -194,7 +224,7 @@ def setup_model_patchtst(params, max_lookback_window, nr_days_forecast, train_da
 
 
 
-def main():
+def main(seed, model_name, num_epochs, debug=False):
 
 
     ############################################################ Setup Experiment ############################################################
@@ -209,29 +239,40 @@ def main():
     # eval_manager = EvaluationManager("2024_03_15_mimic_iv")
     # experiment = Experiment("setup_mimic_neuralforecast")
     
+    eval_manager = EvaluationManager("2024_03_15_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", debug_mode=debug)
+    experiment = Experiment(experiment_class_name="timellm_patchtst", experiment_name=model_name, base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", experiment_folder_root="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/log/mimic_forecast/")
+
+
+    # # Uncomment for debug mode of WandB
+    # if WANDB_DEBUG_MODE:
+    #     experiment.setup_wandb_debug_mode()
+    # else:
+    #     experiment.setup_wandb("All NeuralForecast Models Setup - Full - Lookback: " + str(MAX_LOOKBACK_WINDOW), "Setup", project="UC - MIMIC-IV")
     
-    eval_manager = EvaluationManager("2024_03_15_mimic_iv", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/")
-    experiment = Experiment("setup_mimic_neuralforecast", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", experiment_folder_root="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/log/mimic_forecast")
-
-
-    # Uncomment for debug mode of WandB
-    if WANDB_DEBUG_MODE:
-        experiment.setup_wandb_debug_mode()
-    else:
-        experiment.setup_wandb("All NeuralForecast Models Setup - Full - Lookback: " + str(MAX_LOOKBACK_WINDOW), "Setup", project="UC - MIMIC-IV")
+    def start_wandb_run(run_name, group):
+        if wandb.run is not None:
+            wandb.finish()
+        if WANDB_DEBUG_MODE:
+            experiment.setup_wandb_debug_mode()
+        else:
+            experiment.setup_wandb(run_name, group, project="UC - MIMIC-IV")
+            
+            
+    start_wandb_run("DataPrep", "Setup")
 
     #: Add hyperparameters to wandb
     wandb.config.nr_days_forecast = NR_DAYS_FORECAST
     wandb.config.max_lookback_window = MAX_LOOKBACK_WINDOW
     wandb.config.constant_row_columns_to_use = CONSTANT_ROW_COLUMNS_TO_USE
-    wandb.config.max_nr_epochs = MAX_NR_EPOCHS
+    # wandb.config.max_nr_epochs = MAX_NR_EPOCHS
 
 
 
     ############################################################ Load & Split Data ############################################################
 
     # Get paths patientids to datasets
-
+    
+    
     logging.info("======================================================= RUNNING FULL ===================================================================")
 
     training_set = "TRAIN"
@@ -255,7 +296,6 @@ def main():
     
     # Setup also validation and test
     validation_full_events, validation_full_meta = splitter.setup_split_indices(validation_full_events, eval_manager)
-
     test_full_events, test_full_meta = splitter.setup_split_indices(test_full_events, eval_manager)
     
     path_to_statistics_file = experiment.base_path + "1_experiments/2024_02_08_mimic_iv/1_data/0_final_data/dataset_statistics.json"
@@ -272,7 +312,6 @@ def main():
                                                                         max_look_back_window=MAX_LOOKBACK_WINDOW, 
                                                                         n_jobs=1,
                                                                         constant_row_columns=CONSTANT_ROW_COLUMNS_TO_USE)
-
             
     validation_full_ts = DartsHelpers.convert_to_darts_dataset_MIMIC(validation_full_events, validation_full_meta, 
                                                                     statistics_dic=statistics_dic,
@@ -306,7 +345,7 @@ def main():
     DartsHelpers.log_to_wandb_missing_data_statistics(test_full_ts, test_set)
 
     #: print for target ts missingness stats
-    logging.info("Missingness ratio in target: " + str(training_full_ts["missing_data_statistics"]["target_ts_missing_ratio"]))
+    # logging.info("Missingness ratio in target: " + str(training_full_ts["missing_data_statistics"]["target_ts_missing_ratio"]))
     logging.info("Nr of TS in training dataset: " + str(len(training_full_ts["target_ts"])))
     logging.info("Nr of TS in validation dataset: " + str(len(validation_full_ts["target_ts"])))
     logging.info("Nr of TS in test dataset: " + str(len(test_full_ts["target_ts"])))
@@ -322,24 +361,25 @@ def main():
     test_full_nf = NeuralForecastHelpers.convert_to_neuralforecast_dataset(test_full_ts, add_target_prefix="lab_")
 
     logging.info("Finished converting to NeuralForecast format")
+    
 
     # Kill off old experiment and finish wandb
-    wandb.run.finish()
-    del experiment
+    # wandb.run.finish()
+    # del experiment
 
     ############################################################ Model setup and training ############################################################
 
 
     def run_and_eval_model(model_setup_and_fit_func, model_wandb_name, model_wandb_group, curr_params):
-
+        start_wandb_run(model_wandb_name, model_wandb_group)
         ############################################################ Experiment Setup ############################################################
-        experiment = Experiment("setup_mimic_neuralforecast")
+        # experiment = Experiment("setup_mimic_neuralforecast", base_path="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/DT-GPT/", experiment_folder_root="/n/holylfs06/LABS/mzitnik_lab/Lab/jiz729/log/mimic_forecast/")
 
-        # Uncomment for debug mode of WandB
-        if WANDB_DEBUG_MODE:
-            experiment.setup_wandb_debug_mode()
-        else:
-            experiment.setup_wandb(model_wandb_name, model_wandb_group, project="UC - MIMIC-IV")
+        # # Uncomment for debug mode of WandB
+        # if WANDB_DEBUG_MODE:
+        #     experiment.setup_wandb_debug_mode()
+        # else:
+        #     experiment.setup_wandb(model_wandb_name, model_wandb_group, project="UC - MIMIC-IV")
 
 
         logging.info("======================================================= RUNNING Full ===================================================================")
@@ -351,9 +391,9 @@ def main():
 
         ############################################################ Model setup and fitting ############################################################
 
-        model = model_setup_and_fit_func(curr_params, MAX_LOOKBACK_WINDOW, NR_DAYS_FORECAST, training_full_nf, validation_full_nf)
+        model = model_setup_and_fit_func(curr_params, MAX_LOOKBACK_WINDOW, NR_DAYS_FORECAST, training_full_nf, validation_full_nf, seed)
 
-        #: add hyperparameters to wandb
+        # #: add hyperparameters to wandb
         wandb.config.update({"model_config": str(model)}, allow_val_change=True)
 
         
@@ -414,8 +454,8 @@ def main():
         
 
         ############################################################ Finish run ############################################################
-        wandb.run.finish()
-        del experiment
+        wandb.finish()
+        # del experiment
 
 
 
@@ -424,11 +464,12 @@ def main():
 
 
     # MLP for debugging
-    curr_wandb_name = "MLP: " + str(NR_DAYS_FORECAST) + " Lookback: " + str(MAX_LOOKBACK_WINDOW)
-    params_mlp = {
-        "max_training_steps": 50,
-    }
-    #run_and_eval_model(setup_model_mlp, curr_wandb_name, "MLP", params_mlp)
+    def run_mlp(num_epochs):
+        curr_wandb_name = "MLP: " + str(NR_DAYS_FORECAST) + " Lookback: " + str(MAX_LOOKBACK_WINDOW)
+        params_mlp = {
+            "max_training_steps": num_epochs,
+        }
+        run_and_eval_model(setup_model_mlp, curr_wandb_name, "MLP", params_mlp)
     #return
 
 
@@ -443,10 +484,7 @@ def main():
         }
         run_and_eval_model(setup_model_patchtst, curr_wandb_name, "PatchTST", params)
     
-    # Running assuming size that will fit into time
-    #run_patchtst(100)
-    
-    logging.info("Finished PatchTST")
+        logging.info("Finished PatchTST")
 
 
     # Time-LLM
@@ -473,15 +511,42 @@ def main():
         run_and_eval_model(setup_model_time_llm, curr_wandb_name, "Time-LLM", params)
 
     # Run
-    #run_time_llm(1.0)
-    run_time_llm(50)
-    # run_patchtst(50)
+    
+    if model_name == 'timellm':
+        run_time_llm(num_epochs)
+    elif model_name == 'patchtst':
+        run_patchtst(num_epochs)
+    elif model_name == 'mlp':
+        run_mlp(num_epochs)
 
 
 # Call main runner
 if __name__ == "__main__":
-    main()
+    import argparse
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[7862],
+        help="list of random seeds"
+    )
+    parser.add_argument("--model_name", type=str, default="timellm",
+                        choices=["timellm", "patchtst", "mlp"])
+    parser.add_argument("--epoch", type=int, default=50)
+    parser.add_argument("--debug", type=bool, default=False)
+
+    args = parser.parse_args()
+    for seed in args.seeds:
+        print(f"Running with seed={seed}")
+        main(
+            seed=seed,
+            model_name=args.model_name,
+            num_epochs=args.epoch,
+            debug=args.debug
+        )
+    # main(seed=args.seed, model_name=args.model_name, num_epochs=args.epoch, debug=args.debug)
 
 
 

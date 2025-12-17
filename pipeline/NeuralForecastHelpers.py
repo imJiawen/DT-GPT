@@ -5,7 +5,7 @@ import logging
 import matplotlib.pyplot as plt
 from darts import TimeSeries
 
-
+from src.utils.experiment import ts_to_df
 
 def get_output_for_neuralforecast_model(model, eval_manager, eval_dataset_dictionary, forecast_horizon_chunks, plot_index_demo=None,
                                         split_base_id_str="_lab_", new_target_prefix="lab_"):
@@ -39,7 +39,7 @@ def get_output_for_neuralforecast_model(model, eval_manager, eval_dataset_dictio
     model_input_df = eval_dataset_dictionary["df"].copy()
 
     #: get split_dates
-    model_input_df['base_unique_id'] = model_input_df['unique_id'].str.rsplit(split_base_id_str, 0).str[0]
+    model_input_df['base_unique_id'] = model_input_df['unique_id'].str.rsplit(pat=split_base_id_str, n=0).str[0]
     split_dates = eval_dataset_dictionary["split_dates"].copy()
     split_dates = split_dates.rename(columns={"unique_id": "base_unique_id"})
 
@@ -92,8 +92,10 @@ def get_output_for_neuralforecast_model(model, eval_manager, eval_dataset_dictio
     #: split from name the target, then melt back to wide format using columns "target_variable" and "y"
     model_column_name = [col for col in predictions_df.columns if col not in ["ds", "unique_id"]][0]
     predictions_df = predictions_df.rename(columns={model_column_name: "y"})
-    predictions_df['base_unique_id'] = predictions_df['unique_id'].str.rsplit(split_base_id_str, 0).str[0]
-    predictions_df['target_variable'] = new_target_prefix + predictions_df['unique_id'].str.split(split_base_id_str, 1).str[1]
+    predictions_df['base_unique_id'] = predictions_df['unique_id'].str.rsplit(pat=split_base_id_str, n=0).str[0]
+    # predictions_df['target_variable'] = new_target_prefix + predictions_df['unique_id'].str.split(split_base_id_str, 1).str[1]
+    # 使用 pat= 和 n= 显式指定参数
+    predictions_df['target_variable'] = new_target_prefix + predictions_df['unique_id'].str.split(pat=split_base_id_str, n=1).str[1]
     predictions_df = predictions_df.drop(columns=["unique_id"])
     predictions_wide_df = predictions_df.pivot(index=['ds', 'base_unique_id'], columns='target_variable', values='y').reset_index(drop=False)
     predictions_wide_df = predictions_wide_df.rename(columns={"ds": "date"})
@@ -120,7 +122,7 @@ def get_output_for_neuralforecast_model(model, eval_manager, eval_dataset_dictio
         inversed_ts = pipeline_targets.inverse_transform(predictions_ts, partial=True)
 
         # Step 4: Convert back to dataframe
-        inversed_df = [ts.pd_dataframe().reset_index(drop=False) for ts in inversed_ts]
+        inversed_df = [ts_to_df(ts).reset_index(drop=False) for ts in inversed_ts]
 
         # Add in base_unique_id from static_covariates from the time series
         inversed_df = [df.assign(base_unique_id=ts.static_covariates["base_unique_id"].values[0]) 
@@ -239,7 +241,7 @@ def convert_to_neuralforecast_dataset(darts_dataset, split_base_id_str="_lab_", 
     # 1. Prepare Target Time Series Data
     df_list = []
     for ts, (patientid, patient_sample_index) in zip(target_ts, patientids_and_patient_sample_index):
-        df = ts.pd_dataframe().reset_index()
+        df = ts_to_df(ts).reset_index()
         df = df.rename(columns={"date": "ds"})
         
         # Add unique ID column
@@ -263,7 +265,7 @@ def convert_to_neuralforecast_dataset(darts_dataset, split_base_id_str="_lab_", 
     # 2. Prepare Past Covariates Time Series Data
     past_covariates_df_list = []
     for ts, (patientid, patient_sample_index) in zip(past_covariate_ts, patientids_and_patient_sample_index):
-        df = ts.pd_dataframe().reset_index()
+        df = ts_to_df(ts).reset_index()
         df = df.rename(columns={"date": "ds"})
         
         # Add unique ID column
@@ -276,7 +278,7 @@ def convert_to_neuralforecast_dataset(darts_dataset, split_base_id_str="_lab_", 
     # 3. Prepare Future Covariates Time Series Data
     future_covariates_df_list = []
     for ts, (patientid, patient_sample_index) in zip(future_covariates_ts, patientids_and_patient_sample_index):
-        df = ts.pd_dataframe().reset_index()
+        df = ts_to_df(ts).reset_index()
         df = df.rename(columns={"date": "ds"})
         
         # Add unique ID column
@@ -349,7 +351,8 @@ def convert_to_neuralforecast_dataset(darts_dataset, split_base_id_str="_lab_", 
     #: Expand static_df to match the univariate unique_id
     # Expand static_df to match the univariate unique_id
     # Extract the base unique_id by removing the target suffix
-    merged_full_df_univariate['base_unique_id'] = merged_full_df_univariate['unique_id'].str.rsplit(split_base_id_str, 0).str[0]
+    # merged_full_df_univariate['base_unique_id'] = merged_full_df_univariate['unique_id'].str.rsplit(split_base_id_str, 0).str[0]
+    merged_full_df_univariate['base_unique_id'] = merged_full_df_univariate['unique_id'].str.rsplit(pat=split_base_id_str, n=0).str[0]
     
     # Merge the expanded unique_id with the static covariates using the base_unique_id
     static_expanded_df = pd.merge(

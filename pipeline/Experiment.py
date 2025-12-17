@@ -22,8 +22,8 @@ import warnings
 class Experiment:
 
     def __init__(self, experiment_name, experiment_class_name=None,  nickname=None, 
-                    experiment_folder_root = "/pstore/data/dt-gpt/raw_experiments/uc2_nsclc/",
-                    timestamp_to_use=None, base_path=None):
+                    experiment_folder_root=None,
+                    timestamp_to_use=None, base_path=None, seed=None):
         
         if experiment_class_name is None:
             experiment_class_name = experiment_name
@@ -45,6 +45,7 @@ class Experiment:
         self.plot_folder_path = None
         self.model_path = None
         self.evaluation_meta_data_path = None
+        self.seed = seed
 
         # Create basic infrastructure
         self.experiment_folder_path = self._create_experiment_folder(timestamp_to_use=timestamp_to_use)  
@@ -67,7 +68,9 @@ class Experiment:
         else:
             self._experiment_time = timestamp_to_use
 
-
+        if self.seed is not None:
+            self._experiment_time = self._experiment_time + '_' + str(self.seed)
+            
         new_dir = self._experiment_folder_root + self._experiment_class_name + "/" + self._experiment_name + "/" + self._experiment_time + "/"
         Path(new_dir).mkdir(parents=True, exist_ok=True)
 
@@ -280,7 +283,7 @@ class Experiment:
         # : gather all data into dataset
         for idx, (constants_row, true_events_input, true_future_events_input, target_dataframe) in enumerate(list_of_split_dfs):
 
-            if idx % 100 == 0:
+            if idx % 500 == 0:
                 logging.info("Generating data - current idx: " + str(idx) + " / " + str(len(list_of_split_dfs)))
 
 

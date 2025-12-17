@@ -9,7 +9,7 @@ from scipy import stats
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 
-
+import inspect
 
 class MetricManager:
 
@@ -227,11 +227,20 @@ class MetricManager:
         return mae
     
     def rmse(self, current_col_targets, current_col_predictions):
-        rmse = mean_squared_error(current_col_targets, current_col_predictions, squared=False)
+        # rmse = mean_squared_error(current_col_targets, current_col_predictions, squared=False)
+        # return rmse
+        if "squared" in inspect.signature(mean_squared_error).parameters:
+            rmse = mean_squared_error(current_col_targets, current_col_predictions, squared=False)
+        else:
+            rmse = np.sqrt(mean_squared_error(current_col_targets, current_col_predictions))
         return rmse
+    
 
     def nrmse(self, current_col_targets, current_col_predictions):
-        rmse = mean_squared_error(current_col_targets, current_col_predictions, squared=False)
+        if "squared" in inspect.signature(mean_squared_error).parameters:
+            rmse = mean_squared_error(current_col_targets, current_col_predictions, squared=False)
+        else:
+            rmse = np.sqrt(mean_squared_error(current_col_targets, current_col_predictions))
         nrmse = rmse / np.std(current_col_targets)  # Normalized RMSE
         return nrmse
     
